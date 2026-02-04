@@ -69,8 +69,12 @@ jobs:
           rel="${{ github.event.inputs.releases || 'noble,bookworm' }}"
           br="${{ github.event.inputs.branches || 'current' }}"
 
-          echo "releases=$(echo $rel | jq -R 'split(",")')" >>$GITHUB_OUTPUT
-          echo "branches=$(echo $br | jq -R 'split(",")')" >>$GITHUB_OUTPUT
+          rel_json=$(printf '%s' "$rel" | jq -cR 'split(",")')
+          br_json=$(printf '%s' "$br" | jq -cR 'split(",")')
+
+          echo "releases=$rel_json" >> "$GITHUB_OUTPUT"
+          echo "branches=$br_json" >> "$GITHUB_OUTPUT"
+
 
       - name: Create release
         uses: softprops/action-gh-release@v2
