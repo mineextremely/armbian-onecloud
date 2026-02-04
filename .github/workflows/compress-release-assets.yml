@@ -79,17 +79,13 @@ jobs:
         id: images
         run: |
           cd assets
+          find . -maxdepth 1 -type f \
+            \( -name "*.img" -o -name "*.burn.img" \) \
+            ! -name "*.txt" \
+            -printf "%f\n" \
+            | sort -u > /tmp/images.list
 
-          ls *.img *.burn.img 2>/dev/null \
-            | grep -v '\.txt$' \
-            > /tmp/images.list || true
-
-          if [ ! -s /tmp/images.list ]; then
-            echo "❌ No image files found to compress"
-            exit 1
-          fi
-
-          echo "Images to compress:"
+          echo "Images to process:"
           cat /tmp/images.list
 
       # ============================================================
@@ -100,7 +96,7 @@ jobs:
           cd assets
           while read -r img; do
             echo "ZSTD compressing $img"
-            zstd -T0 -19 -k "$img"
+            zstd -T0 -19 -k -f "$img"
           done < /tmp/images.list
 
       - name: Upload ZSTD assets
@@ -117,7 +113,7 @@ jobs:
           cd assets
           while read -r img; do
             echo "7Z compressing $img"
-            7z a -t7z -mx=9 "$img.7z" "$img"
+            7z a -t7z -mx=9 -y "$img.7z" "$img"
           done < /tmp/images.list
 
       - name: Upload 7Z assets
@@ -134,7 +130,7 @@ jobs:
           cd assets
           while read -r img; do
             echo "XZ compressing $img"
-            xz -T0 -9e -k "$img"
+            xz -T0 -9e -k -f "$img"
           done < /tmp/images.list
 
       - name: Upload XZ assets
