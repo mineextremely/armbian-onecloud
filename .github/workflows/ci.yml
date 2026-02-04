@@ -175,7 +175,7 @@ jobs:
             ls -l uboot.img
             exit 1
           fi
-
+          
           ./AmlImg unpack uboot.img burn/
 
           diskimg=$(ls output/images/*.img)
@@ -202,12 +202,3 @@ jobs:
         with:
           tag_name: ${{ env.TAG }}
           files: output/images/*
-      
-      - name: Trigger compression workflow
-        uses: peter-evans/workflow-dispatch@v1
-        with:
-          workflow: Compress release images
-          ref: main
-          inputs:
-            tag: ${{ env.TAG }}
-
