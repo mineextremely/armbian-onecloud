@@ -23,18 +23,36 @@ jobs:
       # ------------------------------------------------------------
       - name: Resolve release tag
         id: tag
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          set -e
+
           if [ -n "${{ github.event.inputs.tag }}" ]; then
             TAG="${{ github.event.inputs.tag }}"
+            echo "Using manually provided tag: $TAG"
+
           elif [ -n "${{ github.event.release.tag_name }}" ]; then
             TAG="${{ github.event.release.tag_name }}"
+            echo "Using release event tag: $TAG"
+
           else
-            echo "❌ No tag provided and not triggered by release"
-            exit 1
+            echo "No tag provided, querying latest release..."
+            TAG=$(curl -s \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${{ github.repository }}/releases/latest" \
+              | jq -r .tag_name)
+
+            if [ "$TAG" = "null" ] || [ -z "$TAG" ]; then
+              echo "❌ Failed to determine latest release tag"
+              exit 1
+            fi
           fi
 
-          echo "Using release tag: $TAG"
+          echo "Resolved tag: $TAG"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
 
       # ------------------------------------------------------------
       # Install compression tools
