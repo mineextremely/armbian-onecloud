@@ -20,13 +20,9 @@ on:
 env:
   SCRIPT_REPO: ${{ github.repository }}
   SCRIPT_REF: ${{ github.ref_name }}
-
-  # 固定 U-Boot
   UBOOT_REPO: hzyitc/u-boot
-  UBOOT_RELEASE: build-20221028-0940
+  UBOOT_TAG: build-20221028-0940
   UBOOT_BURNIMG: eMMC.burn.img
-
-  # 官方 Armbian
   ARMBIAN_REPO: armbian/build
   ARMBIAN_REF: main
 
@@ -50,7 +46,6 @@ jobs:
           TAG="ci-$(date -u +'%Y%m%d-%H%M%S')"
 
           SCRIPT_SHA=$(curl -s https://api.github.com/repos/${SCRIPT_REPO}/commits/${SCRIPT_REF} | jq -r .sha)
-          UBOOT_TAG=$(curl -s https://api.github.com/repos/${UBOOT_REPO}/releases/${UBOOT_RELEASE} | jq -r .tag_name)
           ARMBIAN_SHA=$(curl -s https://api.github.com/repos/${ARMBIAN_REPO}/commits/${ARMBIAN_REF} | jq -r .sha)
 
           cat <<EOF >>$GITHUB_ENV
@@ -174,6 +169,13 @@ jobs:
           curl -L -o uboot.img \
             https://github.com/${UBOOT_REPO}/releases/download/${UBOOT_TAG}/${UBOOT_BURNIMG}
 
+          # sanity check
+          if [ ! -s uboot.img ] || [ "$(stat -c%s uboot.img)" -lt 1048576 ]; then
+            echo "❌ uboot.img looks invalid"
+            ls -l uboot.img
+            exit 1
+          fi
+          
           ./AmlImg unpack uboot.img burn/
 
           diskimg=$(ls output/images/*.img)
