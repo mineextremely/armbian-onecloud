@@ -18,37 +18,65 @@ jobs:
       contents: write   # 允许向 release 上传文件
 
     steps:
+      # ------------------------------------------------------------
+      # Resolve release tag (works for release + workflow_dispatch)
+      # ------------------------------------------------------------
       - name: Resolve release tag
         id: tag
         run: |
           if [ -n "${{ github.event.inputs.tag }}" ]; then
-            echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+            TAG="${{ github.event.inputs.tag }}"
+          elif [ -n "${{ github.event.release.tag_name }}" ]; then
+            TAG="${{ github.event.release.tag_name }}"
           else
-            echo "tag=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+            echo "❌ No tag provided and not triggered by release"
+            exit 1
           fi
 
+          echo "Using release tag: $TAG"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      # ------------------------------------------------------------
+      # Install compression tools
+      # ------------------------------------------------------------
       - name: Install compression tools
         run: |
           sudo apt-get update
           sudo apt-get install -y zstd xz-utils p7zip-full
 
+      # ------------------------------------------------------------
+      # Download .img / .burn.img assets from release
+      # ------------------------------------------------------------
       - name: Download release image assets
         uses: robinraju/release-downloader@v1.11
         with:
-          tag: ${{ github.event.release.tag_name }}
+          tag: ${{ steps.tag.outputs.tag }}
           fileName: "*.img*"
           out-file-path: assets
 
+      # ------------------------------------------------------------
+      # Prepare image list (exclude .txt, tolerate missing matches)
+      # ------------------------------------------------------------
       - name: Prepare image list
         id: images
         run: |
           cd assets
-          ls *.img *.burn.img 2>/dev/null | grep -v '\.txt$' > /tmp/images.list
+
+          ls *.img *.burn.img 2>/dev/null \
+            | grep -v '\.txt$' \
+            > /tmp/images.list || true
+
+          if [ ! -s /tmp/images.list ]; then
+            echo "❌ No image files found to compress"
+            exit 1
+          fi
+
+          echo "Images to compress:"
           cat /tmp/images.list
 
-      # ----------------------------
-      # ZSTD (最快，优先)
-      # ----------------------------
+      # ============================================================
+      # ZSTD — fastest (run first)
+      # ============================================================
       - name: Compress with ZSTD (balanced, fast)
         run: |
           cd assets
@@ -63,9 +91,9 @@ jobs:
           tag_name: ${{ steps.tag.outputs.tag }}
           files: assets/*.zst
 
-      # ----------------------------
-      # 7Z (正常压缩，Windows 友好)
-      # ----------------------------
+      # ============================================================
+      # 7Z — normal compression (Windows friendly)
+      # ============================================================
       - name: Compress with 7Z (normal)
         run: |
           cd assets
@@ -80,9 +108,9 @@ jobs:
           tag_name: ${{ steps.tag.outputs.tag }}
           files: assets/*.7z
 
-      # ----------------------------
-      # XZ (极限压缩，最慢，最后)
-      # ----------------------------
+      # ============================================================
+      # XZ — maximum compression (slowest, last)
+      # ============================================================
       - name: Compress with XZ (maximum)
         run: |
           cd assets
