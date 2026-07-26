@@ -3,7 +3,7 @@ name: CI
 on:
   workflow_dispatch:
     inputs:
-      releases:- name: Install tools
+      releases:
         description: "Target OS releases (comma separated)"
         required: false
         default: "noble,bookworm"
