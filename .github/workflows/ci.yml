@@ -80,7 +80,7 @@ jobs:
             **Sources**
             - Script: ${{ env.SCRIPT_REPO }}@${{ env.SCRIPT_REF }}
             - Armbian: ${{ env.ARMBIAN_REPO }}@${{ env.ARMBIAN_REF }}
-            - U-Boot: ${{ env.UBOOT_REPO }}@${{ env.UBOOT_RELEASE }}
+            - U-Boot: ${{ env.UBOOT_REPO }}@${{ env.UBOOT_TAG }}
 
   build-debs:
     name: Build kernel (${{ matrix.branch }})
@@ -161,12 +161,12 @@ jobs:
           sudo apt-get install -y android-sdk-libsparse-utils
 
           ver=v0.3.1
-          curl -L -o AmlImg https://github.com/hzyitc/AmlImg/releases/download/$ver/AmlImg_${ver}_linux_amd64
+          curl -fL -o AmlImg https://github.com/hzyitc/AmlImg/releases/download/$ver/AmlImg_${ver}_linux_amd64
           chmod +x AmlImg
 
       - name: Build burn.img
         run: |
-          curl -L -o uboot.img \
+          curl -fL -o uboot.img \
             https://github.com/${UBOOT_REPO}/releases/download/${UBOOT_TAG}/${UBOOT_BURNIMG}
 
           # sanity check
@@ -179,10 +179,10 @@ jobs:
           ./AmlImg unpack uboot.img burn/
 
           diskimg=$(ls output/images/*.img)
-          loop=$(sudo losetup --find --show --partscan $diskimg)
+          loop=$(sudo losetup --find --show --partscan "$diskimg")
 
-          sudo img2simg ${loop}p1 burn/boot.simg
-          sudo img2simg ${loop}p2 burn/rootfs.simg
+          sudo img2simg "${loop}p1" burn/boot.simg
+          sudo img2simg "${loop}p2" burn/rootfs.simg
           sudo losetup -d $loop
 
           echo -n "sha1sum $(sha1sum burn/boot.simg | awk '{print $1}')" > burn/boot.VERIFY
